@@ -144,7 +144,6 @@ void SensorService::onFirstRef()
                 // virtual debugging sensors are not added to mUserSensorList
                 registerVirtualSensor( new CorrectedGyroSensor(list, count) );
                 registerVirtualSensor( new GyroDriftSensor() );
-
             } else if (orientationIndex != -1) {
                 // If we don't have a gyro but have a orientation sensor from
                 // elsewhere, we can compute rotation vector from that.
