@@ -504,9 +504,24 @@ void Layer::onDraw(const sp<const DisplayDevice>& hw, const Region& clip) const
         // is probably going to have something visibly wrong.
     }
 
+#ifdef DECIDE_TEXTURE_TARGET
+    GLuint currentTextureTarget = mSurfaceFlingerConsumer->getCurrentTextureTarget();
+#endif
+
+    bool canAllowGPU = false;
+#ifdef QCOM_BSP
+    if(isProtected()) {
+        char property[PROPERTY_VALUE_MAX];
+        if ((property_get("persist.gralloc.cp.level3", property, NULL) > 0) &&
+                (atoi(property) == 1)) {
+            canAllowGPU = true;
+        }
+    }
+#endif
+
     bool blackOutLayer = isProtected() || (isSecure() && !hw->isSecure());
 
-    if (!blackOutLayer) {
+    if (!blackOutLayer || (canAllowGPU)) {
         // TODO: we could be more subtle with isFixedSize()
         const bool useFiltering = getFiltering() || needsFiltering(hw) || isFixedSize();
 
@@ -516,18 +531,33 @@ void Layer::onDraw(const sp<const DisplayDevice>& hw, const Region& clip) const
         mSurfaceFlingerConsumer->getTransformMatrix(textureMatrix);
 
         // Set things up for texturing.
+#ifdef DECIDE_TEXTURE_TARGET
+        glBindTexture(currentTextureTarget, mTextureName);
+#else
         glBindTexture(GL_TEXTURE_EXTERNAL_OES, mTextureName);
+#endif
         GLenum filter = GL_NEAREST;
         if (useFiltering) {
             filter = GL_LINEAR;
         }
+#ifdef DECIDE_TEXTURE_TARGET
+        glTexParameterx(currentTextureTarget, GL_TEXTURE_MAG_FILTER, filter);
+        glTexParameterx(currentTextureTarget, GL_TEXTURE_MIN_FILTER, filter);
+#else
         glTexParameterx(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, filter);
         glTexParameterx(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, filter);
+#endif
         glMatrixMode(GL_TEXTURE);
         glLoadMatrixf(textureMatrix);
         glMatrixMode(GL_MODELVIEW);
+#ifdef DECIDE_TEXTURE_TARGET
+        glDisable((currentTextureTarget == GL_TEXTURE_2D) ?
+                    GL_TEXTURE_EXTERNAL_OES : GL_TEXTURE_2D);
+        glEnable(currentTextureTarget);
+#else
         glDisable(GL_TEXTURE_2D);
         glEnable(GL_TEXTURE_EXTERNAL_OES);
+#endif
     } else {
         glBindTexture(GL_TEXTURE_2D, mFlinger->getProtectedTexName());
         glMatrixMode(GL_TEXTURE);
@@ -1115,8 +1145,11 @@ Region Layer::latchBuffer(bool& recomputeVisibleRegions)
 
 
         Reject r(mDrawingState, currentState(), recomputeVisibleRegions);
-
+#ifdef DECIDE_TEXTURE_TARGET
+        if (mSurfaceFlingerConsumer->updateTexImage(&r, true) != NO_ERROR) {
+#else
         if (mSurfaceFlingerConsumer->updateTexImage(&r) != NO_ERROR) {
+#endif
             // something happened!
             recomputeVisibleRegions = true;
             return outDirtyRegion;
@@ -1305,6 +1338,18 @@ bool Layer::isIntOnly() const
     }
     return false;
 }
+
+bool Layer::isSecureDisplay() const
+{
+    const sp<GraphicBuffer>& activeBuffer(mActiveBuffer);
+    if (activeBuffer != 0) {
+        uint32_t usage = activeBuffer->getUsage();
+        if(usage & GRALLOC_USAGE_PRIVATE_SECURE_DISPLAY)
+            return true;
+    }
+    return false;
+}
+
 #endif
 // ---------------------------------------------------------------------------
 

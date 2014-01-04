@@ -107,7 +107,8 @@ SurfaceFlinger::SurfaceFlinger()
         mDebugInTransaction(0),
         mLastTransactionTime(0),
         mBootFinished(false),
-        mUseDithering(0)
+        mUseDithering(0),
+        mPrefer16bpp(0)
 {
     ALOGI("SurfaceFlinger is starting");
 
@@ -128,6 +129,9 @@ SurfaceFlinger::SurfaceFlinger()
             mDebugDDMS = 0;
         }
     }
+
+    property_get("persist.sys.prefer_16bpp", value, "0");
+    mPrefer16bpp = atoi(value);
 
     ALOGI_IF(mDebugRegion, "showupdates enabled");
     ALOGI_IF(mDebugDDMS, "DDMS debugging enabled");
@@ -1457,17 +1461,24 @@ void SurfaceFlinger::computeVisibleRegions(size_t dpy,
 
     outDirtyRegion.clear();
     bool bIgnoreLayers = false;
-    int extOnlyLayerIndex = -1;
+    int indexLOI = -1;
     size_t i = currentLayers.size();
 #ifdef QCOM_BSP
     while (i--) {
         const sp<Layer>& layer = currentLayers[i];
         // iterate through the layer list to find ext_only layers and store
         // the index
-        if ((dpy && layer->isExtOnly())) {
+        if (layer->isSecureDisplay()) {
             bIgnoreLayers = true;
-            extOnlyLayerIndex = i;
+            indexLOI = -1;
+            if(!dpy)
+                indexLOI = i;
             break;
+        }
+
+        if (dpy && layer->isExtOnly()) {
+            bIgnoreLayers = true;
+            indexLOI = i;
         }
     }
     i = currentLayers.size();
@@ -1481,7 +1492,9 @@ void SurfaceFlinger::computeVisibleRegions(size_t dpy,
         // Only add the layer marked as "external_only" to external list and
         // only remove the layer marked as "external_only" from primary list
         // and do not add the layer marked as "internal_only" to external list
-        if((bIgnoreLayers && extOnlyLayerIndex != (int)i) ||
+        // Add secure UI layers to primary and remove other layers from internal
+        //and external list
+        if((bIgnoreLayers && indexLOI != (int)i) ||
            (!dpy && layer->isExtOnly()) ||
            (dpy && layer->isIntOnly())) {
             // Ignore all other layers except the layers marked as ext_only
@@ -2121,7 +2134,10 @@ status_t SurfaceFlinger::createNormalLayer(const sp<Client>& client,
 #ifdef NO_RGBX_8888
         format = PIXEL_FORMAT_RGB_565;
 #else
-        format = PIXEL_FORMAT_RGBX_8888;
+        if (mPrefer16bpp)
+            format = PIXEL_FORMAT_RGB_565;
+        else
+            format = PIXEL_FORMAT_RGBX_8888;
 #endif
         break;
     }
@@ -2635,7 +2651,7 @@ status_t SurfaceFlinger::onTransact(
             const int pid = ipc->getCallingPid();
             const int uid = ipc->getCallingUid();
             if ((uid != AID_GRAPHICS) &&
-#ifdef BOARD_EGL_NEEDS_LEGACY_FB
+#if defined(BOARD_EGL_NEEDS_LEGACY_FB) || defined(USE_LEGACY_SCREENSHOT)
                  (uid != AID_SYSTEM) &&
 #endif
                     !PermissionCache::checkPermission(sAccessSurfaceFlinger, pid, uid)) {
@@ -2646,7 +2662,7 @@ status_t SurfaceFlinger::onTransact(
             break;
         }
         case CAPTURE_SCREEN:
-#ifdef BOARD_EGL_NEEDS_LEGACY_FB
+#if defined(BOARD_EGL_NEEDS_LEGACY_FB) || defined(USE_LEGACY_SCREENSHOT)
         case CAPTURE_SCREEN_DEPRECATED:
 #endif
         {
@@ -2864,7 +2880,7 @@ status_t SurfaceFlinger::captureScreen(const sp<IBinder>& display,
                 result = flinger->captureScreenImplLocked(hw,
                         producer, reqWidth, reqHeight, minLayerZ, maxLayerZ);
             } else {
-#ifdef BOARD_EGL_NEEDS_LEGACY_FB
+#if defined(BOARD_EGL_NEEDS_LEGACY_FB) || defined(USE_LEGACY_SCREENSHOT)
                 // Should never get here
                 return BAD_VALUE;
 #else
@@ -2963,6 +2979,12 @@ void SurfaceFlinger::renderScreenImplLocked(
         const Layer::State& state(layer->drawingState());
         if (state.layerStack == hw->getLayerStack()) {
             if (state.z >= minLayerZ && state.z <= maxLayerZ) {
+#ifdef QCOM_BSP
+                // dont render the secure Display Layer
+                if(layer->isSecureDisplay()) {
+                    continue;
+                }
+#endif
                 if (layer->isVisible()) {
                     if (filtering) layer->setFiltering(true);
                     layer->draw(hw);
@@ -3044,7 +3066,7 @@ status_t SurfaceFlinger::captureScreenImplLocked(
 
 status_t SurfaceFlinger::captureScreenImplCpuConsumerLocked(
         const sp<const DisplayDevice>& hw,
-#ifdef BOARD_EGL_NEEDS_LEGACY_FB
+#if defined(BOARD_EGL_NEEDS_LEGACY_FB) || defined(USE_LEGACY_SCREENSHOT)
         sp<IMemoryHeap>* heap, uint32_t* w, uint32_t* h,
 #else
         const sp<IGraphicBufferProducer>& producer,
@@ -3102,7 +3124,7 @@ status_t SurfaceFlinger::captureScreenImplCpuConsumerLocked(
         // have to wrap it with a CPU->CPU path, which is what
         // glReadPixels essentially is.
 
-#ifdef BOARD_EGL_NEEDS_LEGACY_FB
+#if defined(BOARD_EGL_NEEDS_LEGACY_FB) || defined(USE_LEGACY_SCREENSHOT)
         size_t size = reqWidth * reqHeight * 4;
         // allocate shared memory large enough to hold the
         // screen capture
@@ -3163,7 +3185,7 @@ status_t SurfaceFlinger::captureScreenImplCpuConsumerLocked(
     return result;
 }
 
-#ifdef BOARD_EGL_NEEDS_LEGACY_FB
+#if defined(BOARD_EGL_NEEDS_LEGACY_FB) || defined(USE_LEGACY_SCREENSHOT)
 status_t SurfaceFlinger::captureScreen(const sp<IBinder>& display,
         sp<IMemoryHeap>* heap,
         uint32_t* outWidth, uint32_t* outHeight,

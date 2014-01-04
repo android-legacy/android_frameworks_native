@@ -677,6 +677,12 @@ ssize_t SurfaceComposerClient::getDisplayOrientation(int32_t displayId) {
 
 // ----------------------------------------------------------------------------
 
+#ifndef FORCE_SCREENSHOT_CPU_PATH
+#define SS_CPU_CONSUMER false
+#else
+#define SS_CPU_CONSUMER true
+#endif
+
 status_t ScreenshotClient::capture(
         const sp<IBinder>& display,
         const sp<IGraphicBufferProducer>& producer,
@@ -684,7 +690,7 @@ status_t ScreenshotClient::capture(
         uint32_t minLayerZ, uint32_t maxLayerZ) {
     sp<ISurfaceComposer> s(ComposerService::getComposerService());
     if (s == NULL) return NO_INIT;
-#ifdef BOARD_EGL_NEEDS_LEGACY_FB
+#if defined(BOARD_EGL_NEEDS_LEGACY_FB) || defined(USE_LEGACY_SCREENSHOT)
     int format = 0;
     producer->query(NATIVE_WINDOW_FORMAT,&format);
     if (format == PIXEL_FORMAT_RGBA_8888) {
@@ -694,7 +700,7 @@ status_t ScreenshotClient::capture(
 #endif
     return s->captureScreen(display, producer,
             reqWidth, reqHeight, minLayerZ, maxLayerZ,
-            false);
+            SS_CPU_CONSUMER);
 }
 
 ScreenshotClient::ScreenshotClient()
@@ -726,7 +732,7 @@ status_t ScreenshotClient::update(const sp<IBinder>& display,
         uint32_t minLayerZ, uint32_t maxLayerZ) {
     sp<ISurfaceComposer> s(ComposerService::getComposerService());
     if (s == NULL) return NO_INIT;
-#ifdef BOARD_EGL_NEEDS_LEGACY_FB
+#if defined(BOARD_EGL_NEEDS_LEGACY_FB) || defined(USE_LEGACY_SCREENSHOT)
     int ret = -1;
     mHeap = 0;
     ret = s->captureScreen(display, &mHeap,
@@ -770,7 +776,7 @@ status_t ScreenshotClient::update(const sp<IBinder>& display,
 }
 
 void ScreenshotClient::release() {
-#ifdef BOARD_EGL_NEEDS_LEGACY_FB
+#if defined(BOARD_EGL_NEEDS_LEGACY_FB) || defined(USE_LEGACY_SCREENSHOT)
     mHeap = 0;
 #else
     if (mHaveBuffer) {

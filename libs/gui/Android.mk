@@ -55,6 +55,10 @@ ifeq ($(BOARD_EGL_NEEDS_LEGACY_FB),true)
     endif
 endif
 
+ifeq ($(TARGET_QCOM_DISPLAY_VARIANT),legacy)
+	LOCAL_CFLAGS += -DUSE_LEGACY_SCREENSHOT
+endif
+
 LOCAL_MODULE:= libgui
 
 ifeq ($(TARGET_BOARD_PLATFORM), tegra)
@@ -68,6 +72,10 @@ ifeq ($(TARGET_QCOM_DISPLAY_VARIANT), legacy)
 endif
 ifeq ($(TARGET_TOROPLUS_RADIO), true)
 	LOCAL_CFLAGS += -DTOROPLUS_RADIO
+endif
+
+ifeq ($(BOARD_ADRENO_DECIDE_TEXTURE_TARGET),true)
+    LOCAL_CFLAGS += -DDECIDE_TEXTURE_TARGET
 endif
 
 include $(BUILD_SHARED_LIBRARY)
