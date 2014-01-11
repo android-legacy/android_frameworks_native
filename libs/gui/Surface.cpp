@@ -36,7 +36,6 @@
 
 #ifdef QCOM_BSP
 #include <gralloc_priv.h>
-#include <qdMetaData.h>
 #ifdef VFM_AVAILABLE
 #include "vfm_metadata.h"
 #endif //VFM_AVAILABLE
