@@ -46,15 +46,11 @@ endif
 # Executed only on QCOM BSPs
 ifeq ($(TARGET_USES_QCOM_BSP),true)
 ifneq ($(TARGET_QCOM_DISPLAY_VARIANT),)
-    LOCAL_C_INCLUDES        += hardware/qcom/display-$(TARGET_QCOM_DISPLAY_VARIANT)/libgralloc
-    LOCAL_C_INCLUDES        += $(TOP)/hardware/qcom/display-$(TARGET_QCOM_DISPLAY_VARIANT)/libqdutils
+    LOCAL_C_INCLUDES += hardware/qcom/display-$(TARGET_QCOM_DISPLAY_VARIANT)/libgralloc
 else
-    LOCAL_C_INCLUDES        += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
-    LOCAL_C_INCLUDES        += $(TOP)/hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libqdutils
+    LOCAL_C_INCLUDES += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
 endif
-    LOCAL_C_INCLUDES        += $(TARGET_OUT_HEADERS)/vpu/
-    LOCAL_CFLAGS            += -DQCOM_BSP
-    LOCAL_SHARED_LIBRARIES  += libqdMetaData
+    LOCAL_CFLAGS += -DQCOM_BSP
 endif
 
 LOCAL_MODULE:= libgui
