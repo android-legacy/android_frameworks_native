@@ -39,6 +39,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libutils \
 	liblog
 
+
 ifeq ($(call is-board-platform-in-list, mpq8092), true)
     LOCAL_CFLAGS            += -DVFM_AVAILABLE
 endif
@@ -51,6 +52,14 @@ else
     LOCAL_C_INCLUDES += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
 endif
     LOCAL_CFLAGS += -DQCOM_BSP
+endif
+
+ifeq ($(BOARD_EGL_SKIP_FIRST_DEQUEUE),true)
+    LOCAL_CFLAGS += -DSURFACE_SKIP_FIRST_DEQUEUE
+endif
+
+ifeq ($(BOARD_USE_MHEAP_SCREENSHOT),true)
+    LOCAL_CFLAGS += -DUSE_MHEAP_SCREENSHOT
 endif
 
 LOCAL_MODULE:= libgui
