@@ -1161,10 +1161,13 @@ void SurfaceFlinger::setUpHWComposer() {
                     const sp<Layer>& layer(currentLayers[i]);
                     layer->setPerFrameData(hw, *cur);
 #ifdef QCOM_HARDWARE
+#ifndef OLD_HWC_API
                     if(freezeSurfacePresent) {
                         // if freezeSurfacePresent, set ANIMATING flag
                         cur->setAnimating(true);
-                    } else {
+                    } else
+#endif
+			{
                         const KeyedVector<wp<IBinder>, DisplayDeviceState>&
                                                 draw(mDrawingState.displays);
                         size_t dc = draw.size();
