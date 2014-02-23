@@ -52,11 +52,9 @@ else
     LOCAL_C_INCLUDES += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
     LOCAL_C_INCLUDES += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libqdutils
 endif
-ifneq ($(TARGET_QCOM_DISPLAY_VARIANT),legacy)
     LOCAL_C_INCLUDES        += $(TARGET_OUT_HEADERS)/vpu/
-    LOCAL_SHARED_LIBRARIES  += libqdMetaData
-endif
     LOCAL_CFLAGS            += -DQCOM_BSP
+    LOCAL_SHARED_LIBRARIES  += libqdMetaData
 endif
 
 ifeq ($(BOARD_EGL_SKIP_FIRST_DEQUEUE),true)
