@@ -77,6 +77,7 @@ public:
     static bool isValid(const sp<Surface>& surface) {
         return surface != NULL && surface->getIGraphicBufferProducer() != NULL;
     }
+
     status_t setDirtyRegion(Region* dirty = NULL);
 
 protected:
