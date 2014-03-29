@@ -22,10 +22,13 @@ LOCAL_SRC_FILES:= \
 	GraphicBufferAllocator.cpp \
 	GraphicBufferMapper.cpp \
 	PixelFormat.cpp \
-	legacy/Overlay.cpp \
 	Rect.cpp \
 	Region.cpp \
 	UiConfig.cpp
+
+ifeq ($(BOARD_USES_LEGACY_OVERLAY), true)
+LOCAL_SRC_FILES += legacy/Overlay.cpp
+endif
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
